@@ -56,11 +56,12 @@ def load_feed(path, kind, date, prefix):
     z = zipfile.ZipFile(path)
     act = active_services(z, date)
     routes = {r["route_id"]: (r["route_short_name"] or r["route_id"], r.get("route_color") or "") for r in rows(z, "routes.txt")}
-    trips, tdir = {}, {}
+    trips, tdir, thead = {}, {}, {}
     for r in rows(z, "trips.txt"):
         if r["service_id"] in act:
             trips[r["trip_id"]] = r["route_id"]
             tdir[r["trip_id"]] = r.get("direction_id", "")
+            thead[r["trip_id"]] = (r.get("trip_headsign") or "", r.get("shape_id") or "")
     st = collections.defaultdict(list)
     for r in rows(z, "stop_times.txt"):
         if r["trip_id"] in trips:
@@ -70,6 +71,7 @@ def load_feed(path, kind, date, prefix):
         stops[prefix + r["stop_id"]] = (float(r["stop_lat"]), float(r["stop_lon"]), r["stop_name"], prefix + r["parent_station"] if r.get("parent_station") else None)
     patterns = collections.defaultdict(list)  # (route, stops tuple) -> list of time arrays
     deps = collections.Counter()               # (route, direction, stop) -> departures in window
+    pmeta = collections.defaultdict(list)
     for tid, lst in st.items():
         lst.sort()
         for _, s_, t in lst:
@@ -80,25 +82,61 @@ def load_feed(path, kind, date, prefix):
             continue
         key = (trips[tid], tdir[tid], tuple(prefix + s for _, s, _ in lst))
         patterns[key].append([t for _, _, t in lst])
+        pmeta[key].append(thead[tid])
     pats = []
     span = (WIN[1] - WIN[0]) / 60.0
     for (rid, did, seq), times in patterns.items():
         hops = [statistics.median(t[i + 1] - t[i] for t in times) / 60.0 for i in range(len(seq) - 1)]
         waits = [min(span / max(deps[(rid, did, s_)], 1) / 2, WAIT_CAP[kind]) for s_ in seq]
         name, color = routes.get(rid, (rid, ""))
-        pats.append({"kind": kind, "route": name, "color": color, "seq": seq, "hops": hops, "waits": waits})
-    return stops, pats
+        head, shape = collections.Counter(pmeta[(rid, did, seq)]).most_common(1)[0][0]
+        pats.append({"kind": kind, "route": name, "color": color, "seq": seq, "hops": hops, "waits": waits, "head": head, "shape": prefix + shape if shape else ""})
+    want = {p["shape"][len(prefix):] for p in pats if p["shape"]}
+    shapes = collections.defaultdict(list)
+    for r in rows(z, "shapes.txt"):
+        if r["shape_id"] in want:
+            shapes[prefix + r["shape_id"]].append((int(r["shape_pt_sequence"]), float(r["shape_pt_lat"]), float(r["shape_pt_lon"])))
+    shapes = {k: [(a, b) for _, a, b in sorted(v)] for k, v in shapes.items()}
+    return stops, pats, shapes
+
+
+def rdp(pts, eps=0.00006):
+    if len(pts) < 3:
+        return pts
+    (x1, y1), (x2, y2) = pts[0], pts[-1]
+    dx, dy = x2 - x1, y2 - y1
+    n = math.hypot(dx, dy) or 1e-12
+    dmax, idx = 0, 0
+    for i in range(1, len(pts) - 1):
+        d = abs(dy * (pts[i][0] - x1) - dx * (pts[i][1] - y1)) / n
+        if d > dmax:
+            dmax, idx = d, i
+    if dmax > eps:
+        return rdp(pts[: idx + 1], eps)[:-1] + rdp(pts[idx:], eps)
+    return [pts[0], pts[-1]]
+
+
+def slice_shape(shape, a, b):
+    if not shape:
+        return [a, b]
+    d2 = lambda p, q: (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2
+    ia = min(range(len(shape)), key=lambda i: d2(shape[i], a))
+    ib = min(range(ia, len(shape)), key=lambda i: d2(shape[i], b)) if ia < len(shape) else ia
+    seg = shape[ia: ib + 1]
+    if len(seg) < 2:
+        return [a, b]
+    return [a] + rdp(seg) + [b]
 
 
 def build(venues, day, with_bus):
     date = DATES[day]
-    stops, pats = {}, []
+    stops, pats, shapes = {}, [], {}
     for kind, files in FEEDS.items():
         if kind == "bus" and not with_bus:
             continue
         for i, f in enumerate(files):
-            s, p = load_feed(os.path.join(G, f), kind, date, f"{kind[0]}{i}:")
-            stops.update(s); pats.extend(p)
+            s, p, sh = load_feed(os.path.join(G, f), kind, date, f"{kind[0]}{i}:")
+            stops.update(s); pats.extend(p); shapes.update(sh)
     used = set(s for p in pats for s in p["seq"])
     stops = {k: v for k, v in stops.items() if k in used}
     print(f"  {day} bus={with_bus}: {len(pats)} patterns, {len(stops)} stops", file=sys.stderr)
@@ -199,7 +237,9 @@ def build(venues, day, with_bus):
                 elif kind == "alight":
                     p = pats[ride["pi"]]
                     to = p["seq"][info[2]]
-                    segs.append(["r", p["kind"][0], p["route"], p["color"], stops[ride["from"]][2], stops[to][2], ride["n"], round(ride["t"]), round(ride["wait"])])
+                    fa, ta = stops[ride["from"]][:2], stops[to][:2]
+                    geo = [[round(x, 5), round(y, 5)] for x, y in slice_shape(shapes.get(p["shape"]), fa, ta)]
+                    segs.append(["r", p["kind"][0], p["route"], p["color"], stops[ride["from"]][2], stops[to][2], ride["n"], round(ride["t"]), round(ride["wait"]), p["head"], geo])
                     ride = None
             if walk:
                 segs.append(["w", round(walk)])
@@ -213,8 +253,13 @@ def build(venues, day, with_bus):
 def main():
     raw = open(os.path.join(HERE, "..", "data.js")).read()
     venues = json.loads(raw[raw.index("=") + 1:].rstrip().rstrip(";"))
-    out = {"order": [v["slug"] for v in venues], "names": []}
-    names = {}
+    out = {"order": [v["slug"] for v in venues], "names": [], "geo": []}
+    names, geos = {}, {}
+    def gid(g):
+        k = json.dumps(g, separators=(",", ":"))
+        if k not in geos:
+            geos[k] = len(out["geo"]); out["geo"].append(g)
+        return geos[k]
     def nid(n):
         if n not in names:
             names[n] = len(out["names"]); out["names"].append(n)
@@ -232,7 +277,7 @@ def main():
                     mins[k] = round(r["minutes"][i][j])
                     st = r["steps"][k]
                     if any(x[0] == "r" for x in st):
-                        steps[k] = [x if x[0] == "w" else [x[0], x[1], x[2], x[3], nid(x[4]), nid(x[5]), x[6], x[7], x[8]] for x in st]
+                        steps[k] = [x if x[0] == "w" else [x[0], x[1], x[2], x[3], nid(x[4]), nid(x[5]), x[6], x[7], x[8], nid(x[9]), gid(x[10])] for x in st]
             out[f"{day}-{'bus' if with_bus else 'subway'}"] = {"m": mins, "s": steps}
     with open(os.path.join(HERE, "..", "transit.js"), "w") as f:
         f.write("window.TRANSIT=" + json.dumps(out, separators=(",", ":")) + ";\n")
