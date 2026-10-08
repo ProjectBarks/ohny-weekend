@@ -5,50 +5,54 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <title>Open Doors Route</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2212%22%20fill%3D%22%23000%22/%3E%3Crect%20x%3D%226%22%20y%3D%229%22%20width%3D%2252%22%20height%3D%223%22%20fill%3D%22%23fff%22/%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2238%22%20r%3D%2217%22%20fill%3D%22%230039a6%22/%3E%3Ctext%20x%3D%2232%22%20y%3D%2245%22%20font-family%3D%22Helvetica%2CArial%2Csans-serif%22%20font-weight%3D%22800%22%20font-size%3D%2220%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%3E17%3C/text%3E%3C/svg%3E">
 <meta name="description" content="Route planner for OHNY Weekend, Oct 17–18, 2026: day plans, subway directions and share links.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=26">
+<link rel="stylesheet" href="styles.css?v=48">
 </head>
 <body class="view-plan">
-<div class="banner" id="banner" hidden role="status">
-  <span>You opened a shared route. It's saved in this browser, so you can change it freely.</span>
-  <button type="button" id="banner-close">Dismiss</button>
-</div>
-<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+<div class="toast" id="toast" hidden></div>
+<div class="sr" id="announce" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <div class="app">
   <header class="sign">
     <div class="sign-title">
-      <h1>Open Doors Route</h1>
-      <p>OHNY Weekend, October 17–18</p>
+      <div class="sign-home">
+        <h1>Open Doors Route</h1>
+        <p>OHNY Weekend, October 17–18</p>
+      </div>
+      <p class="sign-now" id="sign-now" aria-hidden="true"></p>
     </div>
     <nav class="days" role="tablist" aria-label="Day">
-      <button role="tab" id="tab-sat" data-day="sat" class="day" aria-selected="true">
+      <button type="button" role="tab" id="tab-sat" data-day="sat" class="day" aria-controls="panel map" aria-selected="true" aria-label="Saturday, October 17" aria-describedby="meta-sat">
         <span class="bullet b-sat" aria-hidden="true">17</span>
         <span class="day-txt"><span class="day-name"><span class="full">Saturday</span><span class="abbr">Sat</span></span><span class="day-meta" id="meta-sat"></span></span>
       </button>
-      <button role="tab" id="tab-sun" data-day="sun" class="day" aria-selected="false">
+      <button type="button" role="tab" id="tab-sun" data-day="sun" class="day" aria-controls="panel map" aria-selected="false" aria-label="Sunday, October 18" aria-describedby="meta-sun">
         <span class="bullet b-sun" aria-hidden="true">18</span>
         <span class="day-txt"><span class="day-name"><span class="full">Sunday</span><span class="abbr">Sun</span></span><span class="day-meta" id="meta-sun"></span></span>
       </button>
     </nav>
   </header>
 
-  <aside class="panel" id="panel">
+  <main class="panel" id="panel" tabindex="-1">
     <nav class="tabs" role="tablist" aria-label="Sections">
-      <button role="tab" data-view="plan" aria-selected="true">Route</button>
-      <button role="tab" data-view="explore" aria-selected="false">All events</button>
-      <button role="tab" data-view="saved" aria-selected="false">Save &amp; share</button>
+      <button role="tab" data-view="plan" aria-selected="true" aria-controls="pane-plan">Route</button>
+      <button role="tab" data-view="explore" aria-selected="false" aria-controls="pane-explore" tabindex="-1">Events</button>
+      <button role="tab" data-view="saved" aria-selected="false" aria-controls="pane-saved" tabindex="-1">Share</button>
     </nav>
+    <div class="banner" id="banner" hidden role="status">
+      <span>You opened a shared route. It’s saved in this browser, so you can change it freely.</span>
+      <button type="button" id="banner-close">Dismiss</button>
+    </div>
 
-    <section class="pane pane-plan" aria-label="Route">
+    <section class="pane pane-plan" id="pane-plan" role="tabpanel" aria-label="Route">
       <div class="plans">
         <div class="plans-head">
           <h2 id="plans-title">Saturday plans</h2>
-          <span class="hint">Swipe for more</span>
         </div>
         <div class="plan-strip" id="plan-strip" role="radiogroup" aria-labelledby="plans-title"></div>
         <p class="plan-blurb" id="plan-blurb"></p>
@@ -58,7 +62,7 @@
         <summary><span class="set-label">Route settings</span><span class="set-sum" id="set-sum"></span></summary>
         <div class="set-body">
           <div class="ctl" id="mix-ctl">
-            <label for="mix">Build my own favors</label>
+            <label for="mix">Build one for me leans toward</label>
             <input type="range" id="mix" min="0" max="100" step="5" value="60">
             <div class="mix-ends"><span>My rankings</span><span id="mix-read"></span><span>Your picks</span></div>
           </div>
@@ -85,30 +89,36 @@
         </div>
       </details>
 
-      <section class="summary" id="summary" aria-live="polite"></section>
-      <ol class="line" id="line" aria-label="Itinerary"></ol>
+      <h2 class="sr" id="route-title">Saturday route</h2>
+      <section class="summary" id="summary" aria-labelledby="route-title"></section>
+      <ol class="line" id="line" aria-labelledby="route-title"></ol>
       <section class="leftover" id="leftover"></section>
     </section>
 
-    <section class="pane pane-explore" aria-label="All events">
+    <section class="pane pane-explore" id="pane-explore" role="tabpanel" aria-label="All events">
       <div class="explore-head">
+        <div class="plans-head">
+          <h2 id="explore-title">Saturday events</h2>
+          <span class="count" id="count"></span>
+          <span class="sr" id="count-live" role="status" aria-live="polite" aria-atomic="true"></span>
+        </div>
         <input type="search" id="q" placeholder="Search events or neighborhoods" aria-label="Search events">
         <div class="chips" role="group" aria-label="Filters">
-          <button type="button" class="chip on" data-f="open" aria-pressed="true">Open <span id="f-day">Saturday</span></button>
+          <button type="button" class="chip on" data-f="open" aria-pressed="true">Open on <span id="f-day">Sat</span></button>
           <button type="button" class="chip" data-f="pick" aria-pressed="false">Your picks</button>
-          <button type="button" class="chip" data-f="rec" aria-pressed="false">My picks for you</button>
+          <button type="button" class="chip" data-f="rec" aria-pressed="false">Recommended</button>
           <button type="button" class="chip" data-f="top" aria-pressed="false">Top 30</button>
           <button type="button" class="chip" data-f="near" aria-pressed="false">Near my route</button>
         </div>
-        <p class="count" id="count"></p>
       </div>
-      <ol class="catalog" id="catalog"></ol>
+      <ol class="catalog" id="catalog" aria-labelledby="explore-title"></ol>
     </section>
 
-    <section class="pane pane-saved" aria-label="Save and share">
+    <section class="pane pane-saved" id="pane-saved" role="tabpanel" aria-label="Save and share">
       <div class="share-card">
         <h2>Share this weekend</h2>
         <p>The link opens both days exactly as you have them, including pins and skips.</p>
+        <ul class="share-days" id="share-days"></ul>
         <div class="btn-row">
           <button type="button" id="share-link" class="btn btn-solid">Copy share link</button>
           <button type="button" id="share-text" class="btn">Copy itinerary as text</button>
@@ -119,7 +129,7 @@
         <div class="save-row">
           <label for="save-name" class="sr">Name for this weekend</label>
           <input id="save-name" type="text" placeholder="Name it, like Plan A" autocomplete="off">
-          <button type="button" id="save-btn" class="btn btn-solid">Save</button>
+          <button type="button" id="save-btn" class="btn">Save</button>
         </div>
         <ul class="saved" id="saved-list"></ul>
         <p class="fine">Your current routes also save automatically in this browser.</p>
@@ -128,32 +138,34 @@
         Travel times come from the MTA's published Saturday and Sunday schedules and include a few minutes of slack per trip. They don't include weekend track work, so check the MTA's service changes the Friday before. Event details from ohny.org.
       </footer>
     </section>
-  </aside>
-
-  <main class="mapwrap" aria-label="Map">
-    <div id="map"></div>
-    <div class="map-key" aria-hidden="true">
-      <span><i class="k k-route"></i>Your route</span>
-      <span><i class="k k-pick"></i>Your picks</span>
-      <span><i class="k k-rec"></i>My picks for you</span>
-      <span><i class="k k-other"></i>Other events</span>
-    </div>
-    <div class="cards" id="cards" aria-label="Stops on this route"></div>
   </main>
 
+  <section class="mapwrap" aria-label="Map">
+    <div id="map" role="region" aria-label="Route map. Use arrow keys to pan, plus and minus to zoom."></div>
+    <div class="map-key" id="map-key" role="note" aria-label="Map key">
+      <span><i class="k k-route" aria-hidden="true">1</i><span class="k-rt">Your route</span></span>
+      <span><i class="k k-pick" aria-hidden="true"></i>Your picks</span>
+      <span><i class="k k-rec" aria-hidden="true"></i>Recommended</span>
+      <span class="k-other-row"><i class="k k-other" aria-hidden="true"></i><span class="k-ev">Other events</span><span class="k-evs">Others</span></span>
+      <span class="k-day-row"><i class="k k-day" aria-hidden="true"><svg width="18" height="4" viewBox="0 0 18 4"><line x1="1" y1="2" x2="17" y2="2" stroke="currentColor" stroke-width="3" stroke-dasharray="6 4" opacity=".25"/></svg></i><span id="key-other">Other day</span></span>
+    </div>
+    <button type="button" class="map-fit" id="map-fit" hidden>Whole route</button>
+    <div class="cards" id="cards" role="group" aria-label="Stops on this route"></div>
+  </section>
+
   <nav class="bottom-nav" aria-label="Views">
-    <button data-view="plan" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18M6 6h9l-2 3 2 3H6"/></svg>Route</button>
-    <button data-view="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>Map</button>
-    <button data-view="explore"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Events</button>
-    <button data-view="saved"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 14v6h14v-6"/></svg>Share</button>
+    <button type="button" data-view="plan" aria-controls="pane-plan" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18"/><path class="f" d="M6 5h11l-2.5 3.5L17 12H6z"/></svg>Route</button>
+    <button type="button" data-view="map" aria-controls="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path class="k" d="M9 4v14M15 6v14"/></svg>Map</button>
+    <button type="button" data-view="explore" aria-controls="pane-explore"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="f" cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Events</button>
+    <button type="button" data-view="saved" aria-controls="pane-saved"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M8 11H5v10h14V11h-3"/><path d="M12 3v8M8 7l4-4 4 4"/></svg>Share</button>
   </nav>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="data.js?v=26"></script>
-<script src="transit.js?v=26"></script>
-<script src="subway.js?v=26"></script>
-<script src="presets.js?v=26"></script>
-<script src="app.js?v=26"></script>
+<script src="data.js?v=48"></script>
+<script src="transit.js?v=48"></script>
+<script src="subway.js?v=48"></script>
+<script src="presets.js?v=48"></script>
+<script src="app.js?v=48"></script>
 </body>
 </html>
