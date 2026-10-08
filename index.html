@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Open Doors Route</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="styles.css?v=16">
+</head>
+<body>
+<div class="banner" id="banner" hidden role="status">
+  <span>You're looking at a shared route. It's saved in this browser under Saved weekends, so you can change it freely.</span>
+  <button type="button" id="banner-close">Dismiss</button>
+</div>
+<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+<div class="app">
+  <aside class="panel" id="panel">
+    <header class="masthead">
+      <h1>Open Doors Route</h1>
+      <p class="sub">OHNY Weekend, Saturday Oct 17 and Sunday Oct 18. Five plans for each day, built from your 12 picks plus the top-ranked events near them. Pick one, or let the optimizer build your own.</p>
+    </header>
+
+    <nav class="days" role="tablist" aria-label="Day">
+      <button role="tab" id="tab-sat" data-day="sat" class="day day-sat" aria-selected="true">
+        <span class="bullet">S</span><span class="day-name">Saturday</span><span class="day-meta" id="meta-sat"></span>
+      </button>
+      <button role="tab" id="tab-sun" data-day="sun" class="day day-sun" aria-selected="false">
+        <span class="bullet">S</span><span class="day-name">Sunday</span><span class="day-meta" id="meta-sun"></span>
+      </button>
+    </nav>
+
+    <section class="plans" id="plans" aria-label="Day plans"></section>
+
+    <section class="controls" id="custom-controls" aria-label="Route settings">
+      <div class="ctl" id="mix-ctl">
+        <label for="mix">What should the optimizer favor?</label>
+        <input type="range" id="mix" min="0" max="100" step="5" value="60">
+        <div class="mix-ends"><span>My rankings</span><span id="mix-read"></span><span>Your picks</span></div>
+      </div>
+      <div class="ctl-row">
+        <div class="ctl">
+          <label for="mode">Getting around</label>
+          <select id="mode">
+            <option value="bus">Subway, bus and walking</option>
+            <option value="subway">Subway and walking only</option>
+            <option value="car">Car or rideshare</option>
+          </select>
+        </div>
+        <div class="ctl">
+          <label for="pace">Pace</label>
+          <select id="pace">
+            <option value="relaxed">Relaxed</option>
+            <option value="standard" selected>Standard</option>
+            <option value="packed">Packed</option>
+          </select>
+        </div>
+      </div>
+      <label class="chk"><input type="checkbox" id="walky" checked> Walk instead of the subway when it's within about 8 minutes</label>
+      <button class="reset" id="reset" type="button">Clear my pins and skips</button>
+    </section>
+
+    <section class="share" aria-label="Save and share">
+      <h2>Save and share</h2>
+      <div class="share-btns">
+        <button type="button" id="share-link" class="btn-primary">Copy share link</button>
+        <button type="button" id="share-text" class="btn">Copy itinerary as text</button>
+      </div>
+      <div class="save-row">
+        <label for="save-name" class="sr">Name for this weekend</label>
+        <input id="save-name" type="text" placeholder="Name this weekend, e.g. Plan A" autocomplete="off">
+        <button type="button" id="save-btn" class="btn">Save</button>
+      </div>
+      <ul class="saved" id="saved-list"></ul>
+      <p class="note-sm">Your current routes save automatically in this browser. Saved weekends and share links keep a copy you can return to or send.</p>
+    </section>
+
+    <section class="summary" id="summary" aria-live="polite"></section>
+
+    <section class="line" id="line" aria-label="Itinerary"></section>
+
+    <section class="leftover" id="leftover"></section>
+
+    <section class="catalog">
+      <div class="catalog-head">
+        <h2>All 131 events, ranked</h2>
+        <input type="search" id="q" placeholder="Search name or neighborhood" aria-label="Search events">
+        <label class="chk"><input type="checkbox" id="openonly" checked> Open on this day</label>
+      </div>
+      <ol class="catalog-list" id="catalog"></ol>
+    </section>
+
+    <footer class="foot">
+      Travel times are estimates from straight-line distance, so tap a leg to check it in Google Maps. Rankings come from three independent read-throughs of every listing. Event data from ohny.org.
+    </footer>
+  </aside>
+
+  <main class="mapwrap">
+    <div id="map" aria-label="Map of events"></div>
+    <div class="legend" aria-hidden="true">
+      <span><i class="lg lg-route"></i>On your route</span>
+      <span><i class="lg lg-pick"></i>Your pick</span>
+      <span><i class="lg lg-rec"></i>My recommendation</span>
+      <span><i class="lg lg-other"></i>Other events</span>
+    </div>
+  </main>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="data.js?v=16"></script>
+<script src="transit.js?v=16"></script>
+<script src="presets.js?v=16"></script>
+<script src="app.js?v=16"></script>
+</body>
+</html>
